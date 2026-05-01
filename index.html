@@ -1,0 +1,2421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chrono-Recall · Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --board-bg: #0f0d0a;
+  --cream: #f5edd8;
+  --cream2: #e8d9b8;
+  --bezel: #1a1510;
+  --tray-bg: #0a0806;
+  --slot-bg: #120e0a;
+  --slot-border: #2a1f14;
+  --muted: #9a7a50;
+  --logo-color: #c8a870;
+  --era-accent: #c8a870;
+  --era-accent-rgb: 200,168,112;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-mono: 'DM Mono', 'Courier New', monospace;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: var(--font-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* BEZEL */
+#app {
+  width: 100vw; height: 100vh;
+  border: 8px solid var(--bezel);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ============================
+   TOP HUD
+   ============================ */
+#hud {
+  height: 52px; min-height: 52px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  background: linear-gradient(to bottom, rgba(5,4,3,0.97) 0%, rgba(8,6,5,0.88) 100%);
+  border-bottom: 1px solid #2a1f14;
+  z-index: 100;
+  flex-shrink: 0;
+}
+#hud-logo {
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
+}
+#hud-logo .logo-diamond {
+  font-size: 10px; color: #4a3a2a;
+  line-height: 1;
+}
+#hud-logo .logo-chrono {
+  font-family: var(--font-serif);
+  font-size: 20px; font-weight: 600;
+  color: var(--logo-color);
+  letter-spacing: 0.05em;
+}
+#hud-logo .logo-sep {
+  font-family: var(--font-mono);
+  font-size: 14px; color: #4a3a2a;
+  margin: 0 2px;
+}
+#hud-logo .logo-recall {
+  font-family: var(--font-serif);
+  font-size: 20px; font-weight: 400; font-style: italic;
+  color: var(--logo-color);
+  letter-spacing: 0.05em;
+}
+
+#hud-era-wrap {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+#hud-era-idle, #hud-era-active {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.3em;
+  text-transform: uppercase;
+  transition: opacity 0.6s ease;
+}
+#hud-era-idle {
+  color: #4a3a2a;
+  opacity: 1;
+}
+#hud-era-active {
+  color: var(--era-accent);
+  opacity: 0;
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  white-space: nowrap;
+  transition: opacity 0.6s ease, color 0.6s ease;
+}
+#hud-era-wrap.era-on #hud-era-idle { opacity: 0; }
+#hud-era-wrap.era-on #hud-era-active { opacity: 1; }
+
+#hud-right {
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+}
+#hud-count-badge {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #2a1f14;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px; color: var(--muted);
+  transition: background 0.6s, color 0.6s;
+  flex-shrink: 0;
+}
+#hud-archive-btn {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.15em;
+  color: var(--logo-color);
+  background: none; border: 1px solid #3a2a14;
+  padding: 5px 14px; cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+#hud-archive-btn:hover {
+  background: rgba(200,168,112,0.1);
+  border-color: var(--logo-color);
+}
+
+/* ============================
+   MAIN AREA
+   ============================ */
+#main {
+  flex: 1; display: flex; position: relative;
+  overflow: hidden;
+}
+
+/* ============================
+   PIECE TRAY
+   ============================ */
+#piece-tray {
+  width: 180px; min-width: 180px;
+  background: linear-gradient(to right, #080604 0%, #0d0a08 100%);
+  border-right: 1px solid #2a1f14;
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding: 10px 0 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 50;
+  box-shadow: inset -6px 0 16px rgba(0,0,0,0.5);
+  scrollbar-width: none;
+}
+#piece-tray::-webkit-scrollbar { display: none; }
+#piece-tray::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: 40px;
+  background: linear-gradient(to top, #080604 0%, transparent 100%);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+#tray-header {
+  width: 100%;
+  padding: 0 12px 8px;
+  border-bottom: 1px solid #2a1f14;
+  margin-bottom: 6px;
+  text-align: center;
+}
+#tray-label {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.4em;
+  color: #4a3a2a;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  display: block;
+}
+#tray-subtitle {
+  font-family: var(--font-mono);
+  font-size: 8px; color: #3a2a1a;
+  letter-spacing: 0.05em;
+}
+
+.piece-slot {
+  width: 152px; height: 108px;
+  background: var(--slot-bg);
+  border: 1px solid var(--slot-border);
+  border-radius: 4px;
+  margin: 3px 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 8px 0;
+  cursor: pointer;
+  transition: box-shadow 0.4s, transform 0.3s, opacity 0.5s, filter 0.5s;
+  position: relative;
+  flex-shrink: 0;
+}
+.piece-slot:hover:not(.used):not(.active) {
+  transform: translateY(-2px);
+}
+.piece-slot .piece-svg {
+  width: 64px; height: 64px;
+  transition: filter 0.4s;
+}
+.piece-slot .decade-label {
+  font-family: var(--font-mono);
+  font-size: 11px; color: #a08a60;
+  margin-top: 5px;
+}
+.piece-slot .era-name {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 12px; color: #70603a;
+}
+.piece-slot.used:not(.active) {
+  filter: saturate(0.3) brightness(0.5);
+}
+.piece-slot.used:not(.active) .used-badge {
+  display: flex !important;
+}
+.used-badge {
+  display: none !important;
+  position: absolute; top: 6px; right: 7px;
+  flex-direction: column; align-items: flex-end;
+  gap: 2px;
+}
+.used-badge .check-icon {
+  font-size: 13px;
+}
+.used-badge .saved-text {
+  font-family: var(--font-mono);
+  font-size: 8px;
+}
+.piece-slot.active {
+  transform: scale(0.95);
+  opacity: 0.55;
+}
+.piece-slot.available:not(.active):not(.used) .piece-svg {
+  animation: pulsePiece 3s ease-in-out infinite;
+}
+.piece-slot.available {
+  /* bottom glow */
+}
+@keyframes pulsePiece {
+  0%, 100% { filter: drop-shadow(0 0 5px var(--piece-glow)); }
+  50% { filter: drop-shadow(0 0 14px var(--piece-glow)); }
+}
+
+/* ============================
+   BOARD SURFACE
+   ============================ */
+#board-surface {
+  flex: 1; position: relative;
+  background: radial-gradient(ellipse 70% 60% at 50% 50%,
+    #1a1510 0%,
+    #130f0c 50%,
+    #0a0806 100%
+  );
+  transition: background 1.5s ease;
+  overflow: hidden;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cline x1='8' y1='0' x2='8' y2='16' stroke='%23c8a870' stroke-width='1'/%3E%3Cline x1='0' y1='8' x2='16' y2='8' stroke='%23c8a870' stroke-width='1'/%3E%3C/svg%3E") 8 8, crosshair;
+}
+
+/* Wood grain / corner vignette */
+#board-surface::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 0% 50%, rgba(25,15,8,0.55) 0%, transparent 18%),
+    radial-gradient(ellipse at 100% 50%, rgba(25,15,8,0.55) 0%, transparent 18%),
+    radial-gradient(ellipse at 50% 0%, rgba(25,15,8,0.45) 0%, transparent 14%),
+    radial-gradient(ellipse at 50% 100%, rgba(25,15,8,0.45) 0%, transparent 14%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Era overlay */
+#era-overlay {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 1.5s;
+}
+
+/* Era center glow */
+#era-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.2s ease, background 1.2s ease;
+  z-index: 2;
+}
+#era-glow.active {
+  animation: era-pulse 4s ease-in-out infinite;
+}
+@keyframes era-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+
+/* Drop zone indicator */
+#drop-zone {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 220px; height: 220px;
+  pointer-events: none;
+  z-index: 3;
+  transition: opacity 0.8s;
+}
+#drop-zone-ring1 {
+  position: absolute; inset: 0;
+  border: 1.5px dashed rgba(200,168,112,0.25);
+  border-radius: 50%;
+  animation: dropPulse 3s ease-in-out infinite;
+  transition: border-color 0.8s;
+}
+#drop-zone-ring2 {
+  position: absolute;
+  top: -12.5%; left: -12.5%;
+  width: 125%; height: 125%;
+  border: 1px dashed rgba(200,168,112,0.08);
+  border-radius: 50%;
+  animation: dropPulse 3s ease-in-out infinite 0.4s;
+  transition: border-color 0.8s;
+}
+#drop-zone-text {
+  position: absolute; width: 100%; text-align: center;
+  top: 50%; transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.25em;
+  color: rgba(200,168,112,0.3);
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+}
+@keyframes dropPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.03); opacity: 0.7; }
+}
+#drop-zone-ring1.ring1-scale { transform: scale(1); }
+
+/* Dust motes */
+.dust-mote {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(240,220,180,0.10);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Flying piece animation */
+#flying-piece {
+  position: fixed;
+  width: 70px; height: 70px;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Placed piece on board */
+#placed-piece-display {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90px; height: 90px;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
+
+/* Era stamp */
+#era-stamp {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, calc(-50% - 90px));
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  z-index: 6;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Ripple */
+.placement-ripple {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%) scale(0);
+  border-radius: 50%;
+  border: 1.5px solid;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Color burst rings */
+.burst-ring {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%) scale(0);
+  border-radius: 50%;
+  border: 1px solid;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ============================
+   PROMPT CARD
+   ============================ */
+#prompt-card {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, calc(-50% + 20px));
+  background: rgba(245, 237, 216, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 6px;
+  max-width: 580px; width: 90%;
+  padding: 28px 40px 32px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.06);
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+  border-top: 4px solid var(--era-accent);
+}
+#prompt-card.visible {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+#prompt-era-stamp {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+#prompt-era-stamp .stamp-icon {
+  width: 28px; height: 28px;
+  flex-shrink: 0;
+  display: flex; align-items: center;
+}
+#prompt-era-stamp .stamp-diamond {
+  font-family: var(--font-mono);
+  font-size: 9px; color: #9a7a50;
+  flex-shrink: 0;
+}
+#prompt-era-stamp .stamp-text {
+  font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+#prompt-number {
+  font-family: var(--font-mono);
+  font-size: 9px; color: var(--muted);
+  text-align: right;
+  margin-bottom: 14px;
+}
+
+#prompt-text {
+  font-family: var(--font-serif);
+  font-size: clamp(20px, 2.5vw, 30px);
+  font-style: italic;
+  color: #1a1208;
+  text-align: center;
+  line-height: 1.5;
+  margin-bottom: 24px;
+  font-weight: 400;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+}
+
+/* Prompt progress dots */
+#prompt-dots {
+  display: flex; justify-content: center; gap: 6px;
+  margin-bottom: 20px;
+}
+.prompt-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  transition: background 0.3s;
+}
+
+/* Mic area */
+#mic-area { text-align: center; }
+
+#mic-btn {
+  border-radius: 28px;
+  padding: 12px 28px;
+  border: 1.5px solid var(--era-accent);
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px;
+  transition: all 0.3s;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--era-accent);
+  letter-spacing: 0.05em;
+}
+#mic-btn svg {
+  width: 12px; height: 12px;
+  flex-shrink: 0;
+}
+#mic-btn:hover:not(.recording) {
+  background: rgba(var(--era-accent-rgb), 0.12);
+}
+#mic-btn.recording {
+  background: var(--era-accent);
+  color: #fff;
+  animation: micPulseOuter 1.2s ease-in-out infinite;
+}
+@keyframes micPulseOuter {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(var(--era-accent-rgb), 0.25); }
+  50% { box-shadow: 0 0 0 10px rgba(var(--era-accent-rgb), 0); }
+}
+
+#mic-status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  margin-top: 8px;
+  min-height: 16px;
+}
+#rec-indicator {
+  display: none;
+  align-items: center; justify-content: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+#rec-indicator .rec-dot {
+  width: 6px; height: 6px;
+  background: #c44;
+  border-radius: 50%;
+  animation: recBlink 1s infinite;
+}
+@keyframes recBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+#rec-timer {
+  font-family: var(--font-mono);
+  font-size: 11px; color: #5a4a30;
+}
+
+/* Waveform */
+#waveform {
+  display: none;
+  justify-content: center; align-items: center;
+  gap: 3px;
+  height: 32px;
+  margin-top: 12px;
+}
+#waveform .bar {
+  width: 4px;
+  border-radius: 2px;
+  transition: height 0.1s;
+}
+
+/* Post-record actions */
+#post-record {
+  display: none;
+  text-align: center;
+  margin-top: 12px;
+}
+#saved-msg {
+  font-family: var(--font-mono);
+  font-size: 11px; color: #4a7a3a;
+  margin-bottom: 4px;
+}
+#next-prompt-btn, #return-piece-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: none; border: none;
+  cursor: pointer; padding: 6px 12px;
+  transition: color 0.3s;
+}
+#next-prompt-btn { color: #5a4a30; margin-top: 4px; }
+#next-prompt-btn:hover { color: #1a1208; }
+#return-piece-btn { color: #8a6a40; margin-top: 2px; display: block; margin-left: auto; margin-right: auto; }
+#return-piece-btn:hover { color: #1a1208; }
+
+#skip-prompt {
+  text-align: right; margin-top: 14px;
+}
+#skip-prompt button {
+  font-family: var(--font-mono);
+  font-size: 9px; color: #9a8a6a;
+  background: none; border: none; cursor: pointer;
+  transition: color 0.3s;
+}
+#skip-prompt button:hover { color: #5a4a30; }
+
+/* ============================
+   TIMELINE OVERLAY
+   ============================ */
+#timeline-panel {
+  position: fixed;
+  top: 0; right: 0;
+  width: 100%; height: 100%;
+  background: #f2e8d4;
+  z-index: 500;
+  transform: translateX(100%);
+  transition: transform 0.5s ease-out;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+#timeline-panel::-webkit-scrollbar { display: none; }
+#timeline-panel.open { transform: translateX(0); }
+
+/* Paper texture */
+#timeline-panel::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+#timeline-panel > * { position: relative; z-index: 1; }
+
+#timeline-header {
+  text-align: center;
+  padding: 52px 40px 0;
+}
+#timeline-header h1 {
+  font-family: var(--font-serif);
+  font-size: 40px; font-style: italic;
+  color: #1a1208; font-weight: 400;
+}
+#timeline-header p {
+  font-family: var(--font-mono);
+  font-size: 11px; color: var(--muted);
+  margin-top: 8px;
+}
+#timeline-diamond-rule {
+  font-family: var(--font-mono);
+  font-size: 12px; color: #c8a870;
+  text-align: center;
+  margin: 20px 0 0;
+  letter-spacing: 0.1em;
+}
+
+#close-timeline {
+  position: fixed; top: 20px; right: 24px;
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.1em;
+  color: #5a4a30; background: none;
+  border: 1px solid #c8a870;
+  padding: 7px 16px; cursor: pointer;
+  z-index: 510;
+  transition: all 0.3s;
+}
+#close-timeline:hover { background: rgba(200,168,112,0.15); }
+
+/* Timeline entries wrapper — for spine */
+#timeline-entries-wrap {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 28px 40px 80px;
+  position: relative;
+}
+/* Vertical spine */
+#timeline-spine {
+  position: absolute;
+  left: 68px; /* 40px padding + 28px in */
+  top: 28px; bottom: 80px;
+  width: 2px;
+  background: linear-gradient(to bottom, #c44a2a, #c85080);
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.timeline-entry {
+  display: flex; gap: 0;
+  padding: 20px 16px 20px 42px;
+  border-bottom: none;
+  min-height: 90px;
+  position: relative;
+  transition: background 0.2s;
+  border-radius: 4px;
+  margin-left: -4px;
+}
+.timeline-entry + .timeline-entry {
+  border-top: 0.5px solid rgba(180,150,100,0.15);
+  padding-top: 20px;
+  margin-top: 8px;
+}
+.timeline-entry:hover {
+  background: rgba(255,255,255,0.5);
+  border-left: 3px solid var(--entry-accent, #c8a870);
+  padding-left: 39px;
+}
+.timeline-entry:hover .entry-arrow {
+  opacity: 1;
+}
+.entry-arrow {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--entry-accent, #c8a870);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+/* Spine connector dot */
+.spine-dot {
+  position: absolute;
+  left: -36px; top: 50%; transform: translateY(-50%);
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--entry-accent, #c8a870);
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,0.6);
+  flex-shrink: 0;
+}
+
+.timeline-entry .era-year {
+  position: absolute; left: -62px; top: 50%; transform: translateY(-50%) rotate(180deg);
+  writing-mode: vertical-rl;
+  font-family: var(--font-mono);
+  font-size: 9px; letter-spacing: 0.15em;
+  color: #8a7a5a;
+}
+.timeline-entry .entry-icon {
+  width: 36px; height: 36px; flex-shrink: 0;
+  margin-top: 2px; margin-right: 14px;
+}
+.timeline-entry .entry-content { flex: 1; }
+.timeline-entry .entry-prompt {
+  font-family: var(--font-serif);
+  font-style: italic; font-size: 17px;
+  color: #2a1a08; line-height: 1.4;
+}
+.timeline-entry .entry-meta {
+  font-family: var(--font-mono);
+  font-size: 10px; color: var(--muted);
+  margin-top: 8px;
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap;
+}
+.timeline-entry .mini-wave {
+  display: flex; align-items: center; gap: 2px;
+  height: 14px;
+}
+.timeline-entry .mini-wave span {
+  width: 2px; border-radius: 1px;
+  display: inline-block;
+}
+.timeline-entry .play-btn {
+  font-family: var(--font-mono);
+  font-size: 10px; color: #5a4a30;
+  background: none; border: 1px solid #c8a870;
+  padding: 3px 10px; cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.3s;
+}
+.timeline-entry .play-btn:hover { background: rgba(200,168,112,0.2); }
+
+/* Empty state */
+#timeline-empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 60vh;
+  padding: 40px;
+  text-align: center;
+}
+#empty-logo {
+  font-family: var(--font-serif);
+  font-size: 18px; letter-spacing: 0.1em;
+  color: #c8a870; margin-bottom: 24px;
+  display: flex; align-items: center; gap: 6px;
+}
+#empty-pieces {
+  margin-bottom: 28px;
+  opacity: 0.12;
+}
+#empty-text {
+  font-family: var(--font-serif);
+  font-style: italic; font-size: 22px;
+  color: #8a7050;
+  line-height: 1.6;
+  max-width: 480px;
+}
+
+/* ============================
+   ERA OVERLAYS
+   ============================ */
+.matrix-col {
+  position: absolute;
+  top: -20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(80,160,80,0.04);
+  writing-mode: vertical-rl;
+  animation: matrixFall linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes matrixFall {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+.grid-80s {
+  background-image:
+    repeating-linear-gradient(0deg, rgba(138,74,200,0.04) 0px, transparent 1px, transparent 60px),
+    repeating-linear-gradient(90deg, rgba(138,74,200,0.04) 0px, transparent 1px, transparent 60px);
+}
+.scanlines-50s {
+  background-image: repeating-linear-gradient(
+    0deg, rgba(58,120,196,0.04) 0px, transparent 1px, transparent 3px
+  );
+}
+.sepia-40s {
+  background: radial-gradient(ellipse at 50% 50%, transparent 25%, rgba(30,12,6,0.35) 100%);
+}
+
+/* ============================
+   LIVE TRANSCRIPT
+   ============================ */
+#live-transcript {
+  display: none;
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.4);
+  border-left: 2px solid var(--era-accent);
+  border-radius: 3px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #2a1a08;
+  text-align: left;
+  max-height: 110px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+#live-transcript.visible { display: block; }
+#live-transcript .interim { color: #8a6a40; }
+#live-transcript .placeholder {
+  color: #8a6a40;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-style: normal;
+  letter-spacing: 0.1em;
+}
+
+/* Transcript shown in archive entries */
+.entry-transcript {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  color: #4a3a20;
+  line-height: 1.5;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.45);
+  border-left: 2px solid var(--entry-accent, #c8a870);
+  border-radius: 2px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease, margin-top 0.3s ease;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+}
+.timeline-entry.expanded .entry-transcript {
+  max-height: 400px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  overflow-y: auto;
+}
+.toggle-transcript-btn {
+  font-family: var(--font-mono);
+  font-size: 10px; color: #5a4a30;
+  background: none; border: 1px solid #c8a870;
+  padding: 3px 10px; cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.3s;
+}
+.toggle-transcript-btn:hover { background: rgba(200,168,112,0.2); }
+
+/* Delete button */
+.delete-btn {
+  font-family: var(--font-mono);
+  font-size: 10px; color: #8a4a3a;
+  background: none; border: 1px solid rgba(180,80,60,0.4);
+  padding: 3px 10px; cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.3s;
+}
+.delete-btn:hover { background: rgba(180,80,60,0.12); border-color: rgba(180,80,60,0.7); }
+
+/* Audio playback element (hidden by default, shown when playing) */
+.entry-audio {
+  display: none;
+  width: 100%;
+  margin-top: 8px;
+  height: 32px;
+}
+.entry-audio.visible { display: block; }
+
+/* Persistent badge accent: when slot has memories saved across sessions */
+.piece-slot.used .saved-text { font-style: italic; }
+
+/* ============================
+   RESPONSIVE
+   ============================ */
+@media (max-width: 1100px) {
+  #piece-tray { width: 150px; min-width: 150px; }
+  .piece-slot { width: 126px; height: 96px; }
+  .piece-slot .piece-svg { width: 52px; height: 52px; }
+}
+@media (max-width: 820px) {
+  #hud { padding: 0 12px; height: 48px; min-height: 48px; }
+  #hud-logo .logo-chrono, #hud-logo .logo-recall { font-size: 16px; }
+  #hud-archive-btn { padding: 4px 10px; font-size: 9px; }
+  #hud-era-wrap { display: none; }
+  #piece-tray { width: 120px; min-width: 120px; padding: 6px 0 12px; }
+  .piece-slot { width: 100px; height: 84px; }
+  .piece-slot .piece-svg { width: 44px; height: 44px; }
+  .piece-slot .decade-label { font-size: 10px; }
+  .piece-slot .era-name { font-size: 10px; }
+  #tray-subtitle { font-size: 7px; }
+  #prompt-card { padding: 22px 24px 26px; max-width: 92%; }
+  #prompt-text { font-size: clamp(16px, 4vw, 22px); margin-bottom: 16px; }
+  #drop-zone { width: 160px; height: 160px; }
+}
+@media (max-width: 560px) {
+  body { font-size: 14px; }
+  #app { border-width: 4px; }
+  #main { flex-direction: column; }
+  #piece-tray {
+    width: 100%; min-width: 0;
+    flex-direction: row;
+    overflow-x: auto; overflow-y: hidden;
+    height: 110px; min-height: 110px;
+    padding: 8px;
+    border-right: none;
+    border-bottom: 1px solid #2a1f14;
+    box-shadow: inset 0 -6px 16px rgba(0,0,0,0.5);
+  }
+  #piece-tray::after { display: none; }
+  #tray-header { display: none; }
+  .piece-slot { width: 90px; height: 88px; min-width: 90px; margin: 0 4px; }
+  #board-surface { min-height: 440px; }
+  #prompt-card { padding: 18px 18px 22px; }
+  #prompt-text { font-size: 16px; line-height: 1.4; margin-bottom: 12px; }
+  #live-transcript { font-size: 13px; max-height: 80px; }
+  #close-timeline { top: 12px; right: 12px; }
+  #timeline-header { padding: 40px 16px 0; }
+  #timeline-header h1 { font-size: 28px; }
+  #timeline-entries-wrap { padding: 16px 16px 60px; }
+  #timeline-spine { left: 36px; }
+  .timeline-entry { padding: 16px 8px 16px 28px; }
+  .timeline-entry .era-year { left: -28px; font-size: 8px; }
+  .spine-dot { left: -22px; width: 8px; height: 8px; }
+  .timeline-entry .entry-prompt { font-size: 15px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- TOP HUD -->
+  <div id="hud">
+    <div id="hud-logo">
+      <span class="logo-diamond">◆</span>
+      <span class="logo-chrono">CHRONO</span>
+      <span class="logo-sep">·</span>
+      <span class="logo-recall">RECALL</span>
+    </div>
+    <div id="hud-era-wrap">
+      <div id="hud-era-idle">PLACE A DECADE TOKEN TO BEGIN</div>
+      <div id="hud-era-active"></div>
+    </div>
+    <div id="hud-right">
+      <div id="hud-count-badge">0</div>
+      <button id="hud-archive-btn" onclick="openTimeline()">FAMILY ARCHIVE →</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <!-- PIECE TRAY -->
+    <div id="piece-tray">
+      <div id="tray-header">
+        <span id="tray-label">PIECE TRAY</span>
+        <div id="tray-subtitle">8 decade tokens</div>
+      </div>
+      <!-- Pieces injected by JS -->
+    </div>
+
+    <!-- BOARD SURFACE -->
+    <div id="board-surface">
+      <div id="era-overlay"></div>
+      <div id="era-glow"></div>
+      <div id="drop-zone">
+        <div id="drop-zone-ring1"></div>
+        <div id="drop-zone-ring2"></div>
+        <div id="drop-zone-text">place a piece</div>
+      </div>
+      <div id="placed-piece-display"></div>
+      <div id="era-stamp"></div>
+
+      <!-- PROMPT CARD -->
+      <div id="prompt-card">
+        <div id="prompt-era-stamp">
+          <div class="stamp-icon" id="stamp-icon-el"></div>
+          <span class="stamp-diamond">◆</span>
+          <span class="stamp-text" id="stamp-text-el"></span>
+        </div>
+        <div id="prompt-number"></div>
+        <div id="prompt-text"></div>
+        <div id="prompt-dots"></div>
+        <div id="mic-area">
+          <button id="mic-btn" onclick="toggleRecording()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="mic-icon">
+              <rect x="9" y="2" width="6" height="12" rx="3"/>
+              <path d="M5 10a7 7 0 0014 0"/>
+              <line x1="12" y1="18" x2="12" y2="22"/>
+              <line x1="8" y1="22" x2="16" y2="22"/>
+            </svg>
+            <span id="mic-btn-label">narrate this memory</span>
+          </button>
+          <div id="rec-indicator">
+            <span class="rec-dot"></span>
+            <span>REC</span>
+            <span id="rec-timer">0:00</span>
+          </div>
+          <div id="mic-status"></div>
+          <div id="waveform"></div>
+          <div id="live-transcript"></div>
+          <div id="post-record">
+            <div id="saved-msg">✓ Memory saved</div>
+            <button id="next-prompt-btn" onclick="nextPrompt()">Next Prompt →</button>
+            <button id="return-piece-btn" onclick="returnPiece()">↩ Return Piece</button>
+          </div>
+        </div>
+        <div id="skip-prompt">
+          <button onclick="skipPrompt()">→ different prompt</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Flying piece -->
+<div id="flying-piece"></div>
+
+<!-- TIMELINE PANEL -->
+<div id="timeline-panel">
+  <button id="close-timeline" onclick="closeTimeline()">✕ RETURN TO BOARD</button>
+  <div id="timeline-header">
+    <h1>Family Memory Archive</h1>
+    <p>A living record, built one story at a time</p>
+    <div id="timeline-diamond-rule">——————◆——————</div>
+  </div>
+  <div id="timeline-entries-wrap">
+    <div id="timeline-spine"></div>
+    <div id="timeline-entries"></div>
+  </div>
+</div>
+
+<script>
+// ===================== DATA =====================
+const DECADES = [
+  {
+    id: '1940s', label: '1940s', name: 'The Forties',
+    color: '#8B1A1A', accent: '#c44a2a', accentRgb: '196,74,42',
+    bg: `radial-gradient(ellipse 80% 70% at 42% 50%,
+      #3a1208 0%, #1f0a06 45%, #0f0604 100%)`,
+    glowColor: 'rgba(180,60,20,0.18)',
+    freq: 120, overlay: 'sepia-40s',
+    piece: 'pawn', pieceLabel: 'Red Pawn',
+    prompts: [
+      "What stories did your family tell about life during the war years?",
+      "What was something your grandparents made by hand that you still remember?",
+      "What did your neighborhood sound like on a Sunday morning?",
+      "Who in your family kept everyone together during hard times?"
+    ]
+  },
+  {
+    id: '1950s', label: '1950s', name: 'The Fifties',
+    color: '#1A3A6B', accent: '#3a78c4', accentRgb: '58,120,196',
+    bg: `radial-gradient(ellipse 80% 70% at 50% 45%,
+      #081830 0%, #05101e 45%, #030a12 100%)`,
+    glowColor: 'rgba(40,100,200,0.18)',
+    freq: 220, overlay: 'scanlines-50s',
+    piece: 'pawn', pieceLabel: 'Blue Pawn',
+    prompts: [
+      "What did your family do on Friday nights before television took over?",
+      "What meal do you remember that no recipe could ever fully capture?",
+      "Where did your family go for the big summer outing each year?",
+      "What car does someone from this era still mention with a particular look in their eye?"
+    ]
+  },
+  {
+    id: '1960s', label: '1960s', name: 'The Sixties',
+    color: '#2A5A2A', accent: '#4aaa3a', accentRgb: '74,170,58',
+    bg: `radial-gradient(ellipse 80% 70% at 45% 55%,
+      #0a2208 0%, #061608 45%, #030a04 100%)`,
+    glowColor: 'rgba(50,160,40,0.16)',
+    freq: 330, overlay: '',
+    piece: 'pawn', pieceLabel: 'Green Pawn',
+    prompts: [
+      "What song from this decade brings back a memory so vivid you can smell it?",
+      "Where were you when something historic happened, and who were you with?",
+      "What was the first job or responsibility that made you feel truly capable?",
+      "What did a family gathering look and sound like at its very best?"
+    ]
+  },
+  {
+    id: '1970s', label: '1970s', name: 'The Seventies',
+    color: '#8B6914', accent: '#d4882a', accentRgb: '212,136,42',
+    bg: `radial-gradient(ellipse 80% 70% at 55% 50%,
+      #2a1a04 0%, #180f04 45%, #0a0804 100%)`,
+    glowColor: 'rgba(200,130,20,0.20)',
+    freq: 165, overlay: '',
+    piece: 'pawn', pieceLabel: 'Yellow Pawn',
+    prompts: [
+      "What did Friday nights look like when you were at your most alive?",
+      "What did your parents say that only made sense decades later?",
+      "What store, diner, or place from this time do you wish still existed?",
+      "What was the trip that changed how you saw the world?"
+    ]
+  },
+  {
+    id: '1980s', label: '1980s', name: 'The Eighties',
+    color: '#2A2A3A', accent: '#8a4ac8', accentRgb: '138,74,200',
+    bg: `radial-gradient(ellipse 80% 70% at 50% 40%,
+      #18083a 0%, #0e0525 45%, #060318 100%)`,
+    glowColor: 'rgba(140,60,220,0.22)',
+    freq: 440, overlay: 'grid-80s',
+    piece: 'die', pieceLabel: 'Die',
+    prompts: [
+      "What technology arrived and quietly rearranged how your whole family spent time?",
+      "Who was your closest friend, and what did the two of you build together?",
+      "What did you dream of becoming, and how close did you get?",
+      "What movie or album felt like it had been made specifically for you?"
+    ]
+  },
+  {
+    id: '1990s', label: '1990s', name: 'The Nineties',
+    color: '#1A5A5A', accent: '#2aaaa0', accentRgb: '42,170,160',
+    bg: `radial-gradient(ellipse 80% 70% at 48% 52%,
+      #041e1e 0%, #031212 45%, #020a0a 100%)`,
+    glowColor: 'rgba(20,160,150,0.18)',
+    freq: 330, overlay: '',
+    piece: 'spinner', pieceLabel: 'Spinner',
+    prompts: [
+      "What was the first time you used the internet, and what did you search for?",
+      "What adventure from this decade do you find yourself returning to in memory?",
+      "What did your bedroom or apartment look like when you were most yourself?",
+      "What did you believe then that you now see completely differently?"
+    ]
+  },
+  {
+    id: '2000s', label: '2000s', name: 'The 2000s',
+    color: '#6A4A1A', accent: '#50a050', accentRgb: '80,160,80',
+    bg: `radial-gradient(ellipse 80% 70% at 52% 48%,
+      #081a06 0%, #051004 45%, #030803 100%)`,
+    glowColor: 'rgba(60,180,60,0.16)',
+    freq: 528, overlay: '',
+    piece: 'hourglass', pieceLabel: 'Hourglass',
+    prompts: [
+      "What moment made you feel like an adult for the very first time?",
+      "Who did you grow closer to because of something difficult?",
+      "What decision from this decade are you quietly most proud of?",
+      "What small, ordinary thing made an unremarkable day feel like enough?"
+    ]
+  },
+  {
+    id: '2010s', label: '2010s', name: 'The Tens',
+    color: '#8B4A5A', accent: '#c85080', accentRgb: '200,80,128',
+    bg: `radial-gradient(ellipse 80% 70% at 50% 50%,
+      #220a14 0%, #15060c 45%, #0a0408 100%)`,
+    glowColor: 'rgba(200,60,120,0.20)',
+    freq: 660, overlay: '',
+    piece: 'star', pieceLabel: 'Star',
+    prompts: [
+      "What did you learn to do in this decade that surprised even you?",
+      "What relationship changed the direction of everything?",
+      "What was the moment you realized the world had genuinely shifted?",
+      "What would you tell the version of yourself at the start of this decade?"
+    ]
+  }
+];
+
+// SVG piece generators
+function pieceSVG(type, color, size = 52) {
+  const s = size;
+  const uid = color.replace('#','') + s;
+  const svgs = {
+    pawn: `<svg viewBox="0 0 60 70" width="${s}" height="${s}" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="pg${uid}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.95"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0.55"/>
+      </linearGradient></defs>
+      <ellipse cx="30" cy="64" rx="19" ry="4.5" fill="${color}" opacity="0.25"/>
+      <path d="M20,62 L16,48 Q14,42 18,38 L22,36 Q20,30 20,26 Q20,14 30,10 Q40,14 40,26 Q40,30 38,36 L42,38 Q46,42 44,48 L40,62 Z"
+        fill="url(#pg${uid})" stroke="${color}" stroke-width="1" opacity="0.9"/>
+      <circle cx="30" cy="18" r="8" fill="${color}" opacity="0.88"/>
+      <circle cx="28" cy="16" r="2.5" fill="rgba(255,255,255,0.18)"/>
+    </svg>`,
+    die: `<svg viewBox="0 0 60 60" width="${s}" height="${s}" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="dg${uid}" x1="0" y1="0" x2="0.7" y2="1">
+        <stop offset="0%" stop-color="#3a3a4a"/>
+        <stop offset="100%" stop-color="#1a1a2a"/>
+      </linearGradient></defs>
+      <rect x="6" y="6" width="48" height="48" rx="8" fill="url(#dg${uid})" stroke="#4a3a6a" stroke-width="1.5"/>
+      <rect x="9" y="9" width="42" height="42" rx="6" fill="none" stroke="rgba(138,74,200,0.12)" stroke-width="1"/>
+      <circle cx="16" cy="16" r="4.5" fill="rgba(200,180,240,0.75)"/>
+      <circle cx="30" cy="30" r="4.5" fill="rgba(200,180,240,0.75)"/>
+      <circle cx="44" cy="44" r="4.5" fill="rgba(200,180,240,0.75)"/>
+    </svg>`,
+    spinner: `<svg viewBox="0 0 60 60" width="${s}" height="${s}" xmlns="http://www.w3.org/2000/svg">
+      <defs><radialGradient id="sg${uid}">
+        <stop offset="0%" stop-color="#2a6a6a"/>
+        <stop offset="100%" stop-color="#1a4a4a"/>
+      </radialGradient></defs>
+      <circle cx="30" cy="30" r="26" fill="url(#sg${uid})" stroke="#3a8a8a" stroke-width="1.5"/>
+      <circle cx="30" cy="30" r="20" fill="none" stroke="rgba(42,170,160,0.12)" stroke-width="1"/>
+      <line x1="30" y1="30" x2="30" y2="8" stroke="rgba(42,170,160,0.7)" stroke-width="2" stroke-linecap="round"/>
+      <polygon points="30,5 33.5,14 26.5,14" fill="rgba(42,170,160,0.85)"/>
+      <circle cx="30" cy="30" r="4" fill="rgba(42,170,160,0.7)"/>
+      <circle cx="30" cy="30" r="1.5" fill="rgba(255,255,255,0.25)"/>
+    </svg>`,
+    hourglass: `<svg viewBox="0 0 50 70" width="${s}" height="${s}" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="hg${uid}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#7a5a2a"/>
+        <stop offset="50%" stop-color="#5a3a1a"/>
+        <stop offset="100%" stop-color="#7a5a2a"/>
+      </linearGradient></defs>
+      <rect x="10" y="4" width="30" height="4" rx="2" fill="#8a6a2a" opacity="0.85"/>
+      <rect x="10" y="62" width="30" height="4" rx="2" fill="#8a6a2a" opacity="0.85"/>
+      <path d="M12,8 L12,20 Q12,30 25,35 Q38,30 38,20 L38,8 Z" fill="url(#hg${uid})" opacity="0.75"/>
+      <path d="M12,62 L12,50 Q12,40 25,35 Q38,40 38,50 L38,62 Z" fill="url(#hg${uid})" opacity="0.75"/>
+      <line x1="25" y1="39" x2="25" y2="54" stroke="rgba(200,160,80,0.25)" stroke-width="1.5"/>
+      <ellipse cx="25" cy="56" rx="8" ry="2.5" fill="rgba(200,160,80,0.3)"/>
+    </svg>`,
+    star: `<svg viewBox="0 0 60 60" width="${s}" height="${s}" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="stg${uid}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#b06a7a"/>
+        <stop offset="100%" stop-color="#6a3a4a"/>
+      </linearGradient></defs>
+      <polygon points="30,4 36,22 56,22 40,34 46,52 30,42 14,52 20,34 4,22 24,22"
+        fill="url(#stg${uid})" stroke="#c85080" stroke-width="1" opacity="0.88"/>
+      <circle cx="30" cy="30" r="5" fill="rgba(255,200,220,0.12)"/>
+    </svg>`
+  };
+  return svgs[type] || svgs.pawn;
+}
+
+// ===================== STATE =====================
+let state = {
+  activeDecade: null,
+  placedPieces: {},
+  promptIndices: {},
+  isRecording: false,
+  recordingStartTime: null,
+  audioContext: null,
+  totalMemories: 0,
+  currentView: 'board',
+  mediaRecorder: null,
+  micGranted: false,
+  recTimerInterval: null,
+  audioChunks: [],
+  analyser: null,
+  micStream: null,
+  micSource: null,
+  recordingPeaks: [],
+  peakSampleInterval: null,
+  speechRecognition: null,
+  liveTranscriptFinal: '',
+  liveTranscriptInterim: '',
+  currentlyPlaying: null,
+};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('chrono-recall-state');
+    if (saved) {
+      const d = JSON.parse(saved);
+      state.placedPieces = d.placedPieces || {};
+      state.promptIndices = d.promptIndices || {};
+      state.totalMemories = d.totalMemories || 0;
+    }
+    // Backfill missing fields on memories saved by earlier versions
+    let mutated = false;
+    Object.keys(state.placedPieces).forEach((decId) => {
+      (state.placedPieces[decId] || []).forEach((m) => {
+        if (!m.id) { m.id = uid(); mutated = true; }
+        if (!('hasAudio' in m)) { m.hasAudio = false; mutated = true; }
+        if (!Array.isArray(m.peaks)) { m.peaks = []; mutated = true; }
+        if (!('transcript' in m)) { m.transcript = ''; mutated = true; }
+      });
+    });
+    if (mutated) saveState();
+  } catch(e) {}
+}
+function saveState() {
+  try {
+    localStorage.setItem('chrono-recall-state', JSON.stringify({
+      placedPieces: state.placedPieces,
+      promptIndices: state.promptIndices,
+      totalMemories: state.totalMemories,
+    }));
+  } catch(e) {}
+}
+
+// ===================== INDEXEDDB (audio blobs) =====================
+const DB_NAME = 'chrono-recall-db';
+const DB_VERSION = 1;
+const AUDIO_STORE = 'audio';
+let _dbPromise = null;
+
+function openDB() {
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(AUDIO_STORE)) {
+        db.createObjectStore(AUDIO_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return _dbPromise;
+}
+
+async function dbPut(id, blob) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(AUDIO_STORE, 'readwrite');
+    tx.objectStore(AUDIO_STORE).put(blob, id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbGet(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(AUDIO_STORE, 'readonly');
+    const req = tx.objectStore(AUDIO_STORE).get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbDelete(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(AUDIO_STORE, 'readwrite');
+    tx.objectStore(AUDIO_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+function uid() {
+  return 'm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+// ===================== AUDIO =====================
+function initAudio() {
+  if (state.audioContext) return;
+  state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = state.audioContext.createOscillator();
+  const gain = state.audioContext.createGain();
+  const lfo = state.audioContext.createOscillator();
+  const lfoGain = state.audioContext.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 60;
+  gain.gain.value = 0.008;
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.3;
+  lfoGain.gain.value = 0.003;
+  lfo.connect(lfoGain);
+  lfoGain.connect(gain.gain);
+  osc.connect(gain);
+  gain.connect(state.audioContext.destination);
+  osc.start(); lfo.start();
+}
+
+function playEraSound(freq) {
+  if (!state.audioContext) return;
+  const ctx = state.audioContext;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  if (freq === 440) {
+    const lfo = ctx.createOscillator();
+    const lg = ctx.createGain();
+    lfo.frequency.value = 5; lg.gain.value = 8;
+    lfo.connect(lg); lg.connect(osc.frequency);
+    lfo.start(); setTimeout(() => lfo.stop(), 700);
+  }
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.7);
+}
+
+function playClickSound() {
+  if (!state.audioContext) return;
+  const ctx = state.audioContext;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.03, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf; src.connect(ctx.destination); src.start();
+}
+
+function playChime() {
+  if (!state.audioContext) return;
+  const ctx = state.audioContext;
+  [220, 330].forEach((f, i) => {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.frequency.value = f;
+    g.gain.setValueAtTime(0, ctx.currentTime + i * 0.08);
+    g.gain.linearRampToValueAtTime(0.08, ctx.currentTime + i * 0.08 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.15);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(ctx.currentTime + i * 0.08);
+    osc.stop(ctx.currentTime + i * 0.08 + 0.2);
+  });
+}
+
+function playWhoosh() {
+  if (!state.audioContext) return;
+  const ctx = state.audioContext;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i/data.length) * 0.06;
+  const src = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass'; filter.frequency.value = 1000;
+  src.buffer = buf; src.connect(filter); filter.connect(ctx.destination); src.start();
+}
+
+// ===================== DUST MOTES (20, more visible) =====================
+function createDustMotes() {
+  const surface = document.getElementById('board-surface');
+  const sizes = [1.5, 1.5, 2, 2, 2, 3, 3, 3, 1.5, 2, 2, 3, 1.5, 2, 3, 2, 1.5, 2, 3, 2];
+  const opacities = [0.09, 0.11, 0.10, 0.13, 0.08, 0.12, 0.14, 0.10, 0.09, 0.11,
+                     0.13, 0.08, 0.12, 0.14, 0.10, 0.11, 0.09, 0.13, 0.08, 0.12];
+
+  for (let i = 0; i < 20; i++) {
+    const mote = document.createElement('div');
+    mote.className = 'dust-mote';
+    const sz = sizes[i];
+    mote.style.width = sz + 'px';
+    mote.style.height = sz + 'px';
+
+    const x = Math.random() * 98;
+    const y = Math.random() * 98;
+    mote.style.left = x + '%';
+    mote.style.top = y + '%';
+
+    const dur = 18 + Math.random() * 17; // 18–35s
+    const delay = -(Math.random() * dur);  // negative so they start mid-drift
+
+    // Unique diagonal direction for each mote
+    const angle = (Math.random() * 360);
+    const dist = 60 + Math.random() * 140;
+    const dx = Math.cos(angle * Math.PI / 180) * dist;
+    const dy = Math.sin(angle * Math.PI / 180) * dist;
+    const midX = dx * (0.3 + Math.random() * 0.4);
+    const midY = dy * (0.3 + Math.random() * 0.4);
+    const op = opacities[i];
+
+    const style = document.createElement('style');
+    style.textContent = `@keyframes mote${i} {
+      0%   { transform: translate(0,0); opacity: ${op * 0.7}; }
+      25%  { transform: translate(${midX * 0.6}px, ${midY * 0.8}px); opacity: ${op}; }
+      50%  { transform: translate(${dx}px, ${dy}px); opacity: ${op * 0.8}; }
+      75%  { transform: translate(${midX * 1.2}px, ${midY * 0.4}px); opacity: ${op * 1.1 > 0.15 ? 0.15 : op * 1.1}; }
+      100% { transform: translate(0,0); opacity: ${op * 0.7}; }
+    }`;
+    document.head.appendChild(style);
+    mote.style.animation = `mote${i} ${dur}s ease-in-out ${delay}s infinite`;
+    surface.appendChild(mote);
+  }
+}
+
+// ===================== PIECE TRAY =====================
+function buildTray() {
+  const tray = document.getElementById('piece-tray');
+  DECADES.forEach(dec => {
+    const slot = document.createElement('div');
+    slot.className = 'piece-slot available';
+    slot.id = 'slot-' + dec.id;
+    slot.style.setProperty('--piece-glow', dec.color + '50');
+    slot.style.boxShadow = `0 4px 20px ${dec.color}14`;
+
+    const memories = state.placedPieces[dec.id] || [];
+    if (memories.length > 0) {
+      slot.classList.remove('available');
+      slot.classList.add('used');
+    }
+
+    slot.innerHTML = `
+      <div class="piece-svg">${pieceSVG(dec.piece, dec.color, 64)}</div>
+      <div class="decade-label">${dec.label}</div>
+      <div class="era-name">${dec.name}</div>
+      <div class="used-badge">
+        <span class="check-icon" style="color:${dec.accent}">✓</span>
+        <span class="saved-text" style="color:${dec.accent}b3">memory saved</span>
+      </div>
+    `;
+
+    slot.addEventListener('mouseenter', () => {
+      if (!slot.classList.contains('used') && !slot.classList.contains('active')) {
+        slot.style.boxShadow = `0 0 18px ${dec.color}35, 0 4px 20px ${dec.color}18, inset 0 0 0 1px ${dec.accent}25`;
+      }
+    });
+    slot.addEventListener('mouseleave', () => {
+      if (!slot.classList.contains('active')) {
+        slot.style.boxShadow = `0 4px 20px ${dec.color}14`;
+      }
+    });
+
+    slot.addEventListener('click', () => {
+      if (slot.classList.contains('active')) return;
+      if (state.activeDecade) return;
+      initAudio();
+      placePiece(dec, slot);
+    });
+
+    tray.appendChild(slot);
+  });
+}
+
+// ===================== PIECE PLACEMENT =====================
+function placePiece(decade, slotEl) {
+  state.activeDecade = decade;
+
+  slotEl.classList.remove('available');
+  slotEl.classList.add('active');
+  // `used` styling is suppressed via :not(.active), so leave it alone — it remains
+  // accurate and reasserts itself when the piece returns.
+  slotEl.style.boxShadow = '';
+
+  // Flying piece animation
+  const flyEl = document.getElementById('flying-piece');
+  const slotRect = slotEl.querySelector('.piece-svg').getBoundingClientRect();
+  const surface = document.getElementById('board-surface');
+  const surfRect = surface.getBoundingClientRect();
+  const targetX = surfRect.left + surfRect.width / 2 - 35;
+  const targetY = surfRect.top + surfRect.height / 2 - 35;
+
+  flyEl.innerHTML = pieceSVG(decade.piece, decade.color, 70);
+  flyEl.style.transition = 'none';
+  flyEl.style.left = slotRect.left + 'px';
+  flyEl.style.top = slotRect.top + 'px';
+  flyEl.style.opacity = '1';
+  flyEl.style.transform = 'scale(0.7)';
+
+  requestAnimationFrame(() => {
+    flyEl.style.transition = 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+    flyEl.style.left = targetX + 'px';
+    flyEl.style.top = targetY + 'px';
+    flyEl.style.transform = 'scale(1)';
+  });
+
+  // Hide drop zone
+  document.getElementById('drop-zone').style.opacity = '0';
+
+  // Show placed piece
+  setTimeout(() => {
+    flyEl.style.opacity = '0';
+    const placed = document.getElementById('placed-piece-display');
+    placed.innerHTML = pieceSVG(decade.piece, decade.color, 90);
+    placed.style.opacity = '1';
+  }, 600);
+
+  // Background transition
+  surface.style.background = decade.bg;
+
+  // Era center glow
+  const glow = document.getElementById('era-glow');
+  glow.style.background = `radial-gradient(ellipse 55% 45% at 50% 50%, ${decade.glowColor} 0%, transparent 70%)`;
+  glow.classList.remove('active');
+  // Trigger reflow so the animation restarts cleanly
+  void glow.offsetWidth;
+  glow.style.opacity = '1';
+  glow.classList.add('active');
+
+  // Era overlay
+  const overlay = document.getElementById('era-overlay');
+  overlay.className = '';
+  if (decade.overlay) overlay.classList.add(decade.overlay);
+  overlay.style.opacity = '1';
+
+  // 2000s matrix rain
+  if (decade.id === '2000s') createMatrixRain();
+
+  // 1960s burst rings
+  if (decade.id === '1960s') createBurstRings(decade.accent);
+
+  // Ripple at 400ms
+  setTimeout(() => {
+    playEraSound(decade.freq);
+    createRipple(decade.accent);
+  }, 400);
+
+  // Transition drop zone ring color to era accent
+  setTimeout(() => {
+    document.getElementById('drop-zone-ring1').style.borderColor = decade.accent + '40';
+    document.getElementById('drop-zone-ring2').style.borderColor = decade.accent + '14';
+  }, 0);
+
+  // Prompt card at 800ms
+  setTimeout(() => showPromptCard(decade), 800);
+
+  // Era stamp typewriter at 1000ms
+  setTimeout(() => typewriterStamp(decade), 1000);
+
+  // HUD update
+  const eraWrap = document.getElementById('hud-era-wrap');
+  const eraActive = document.getElementById('hud-era-active');
+  eraActive.textContent = `◆ ${decade.name.toUpperCase()} ◆`;
+  eraActive.style.color = decade.accent;
+  eraWrap.classList.add('era-on');
+
+  // Badge
+  document.getElementById('hud-count-badge').style.background = decade.accent + '33';
+  document.getElementById('hud-count-badge').style.color = decade.accent;
+
+  // Update cursor
+  updateCursor(decade.accent);
+
+  // CSS variables
+  document.documentElement.style.setProperty('--era-accent', decade.accent);
+  document.documentElement.style.setProperty('--era-accent-rgb', decade.accentRgb);
+}
+
+function updateCursor(color) {
+  const encoded = encodeURIComponent(color);
+  document.getElementById('board-surface').style.cursor =
+    `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cline x1='8' y1='0' x2='8' y2='16' stroke='${encoded}' stroke-width='1.5'/%3E%3Cline x1='0' y1='8' x2='16' y2='8' stroke='${encoded}' stroke-width='1.5'/%3E%3Ccircle cx='8' cy='8' r='1.5' fill='${encoded}'/%3E%3C/svg%3E") 8 8, crosshair`;
+}
+
+function typewriterStamp(decade) {
+  const el = document.getElementById('era-stamp');
+  const text = `◆ ${decade.label} ◆`;
+  el.style.color = decade.accent;
+  el.style.opacity = '1';
+  el.textContent = '';
+  let i = 0;
+  function typeChar() {
+    if (i < text.length) { el.textContent += text[i++]; setTimeout(typeChar, 40); }
+  }
+  typeChar();
+}
+
+function createRipple(color) {
+  const surface = document.getElementById('board-surface');
+  const ripple = document.createElement('div');
+  ripple.className = 'placement-ripple';
+  ripple.style.width = '2px';
+  ripple.style.height = '2px';
+  ripple.style.borderColor = color;
+  ripple.style.opacity = '0.7';
+  surface.appendChild(ripple);
+  requestAnimationFrame(() => {
+    ripple.style.transition = 'all 0.8s ease-out';
+    ripple.style.width = '200px';
+    ripple.style.height = '200px';
+    ripple.style.opacity = '0';
+    ripple.style.transform = 'translate(-50%, -50%) scale(1)';
+  });
+  setTimeout(() => ripple.remove(), 900);
+}
+
+function createBurstRings(color) {
+  const surface = document.getElementById('board-surface');
+  for (let i = 0; i < 3; i++) {
+    const ring = document.createElement('div');
+    ring.className = 'burst-ring';
+    ring.style.width = '60px';
+    ring.style.height = '60px';
+    ring.style.borderColor = color;
+    ring.style.opacity = '0.3';
+    surface.appendChild(ring);
+    setTimeout(() => {
+      ring.style.transition = `all ${1 + i * 0.3}s ease-out`;
+      ring.style.transform = `translate(-50%,-50%) scale(${3 + i * 2})`;
+      ring.style.opacity = '0';
+    }, i * 200 + 50);
+    setTimeout(() => ring.remove(), 2200 + i * 300);
+  }
+}
+
+function createMatrixRain() {
+  const surface = document.getElementById('board-surface');
+  const chars = '01アイウエオカキクケコ';
+  for (let i = 0; i < 12; i++) {
+    const col = document.createElement('div');
+    col.className = 'matrix-col';
+    col.style.left = (5 + Math.random() * 90) + '%';
+    col.style.animationDuration = (8 + Math.random() * 12) + 's';
+    let text = '';
+    for (let j = 0; j < 20; j++) text += chars[Math.floor(Math.random() * chars.length)] + '\n';
+    col.textContent = text;
+    surface.appendChild(col);
+    state._matrixCols = state._matrixCols || [];
+    state._matrixCols.push(col);
+  }
+}
+
+function clearMatrixRain() {
+  if (state._matrixCols) { state._matrixCols.forEach(c => c.remove()); state._matrixCols = []; }
+}
+
+// ===================== PROMPT CARD =====================
+function showPromptCard(decade) {
+  const idx = state.promptIndices[decade.id] || 0;
+  const curIdx = idx % decade.prompts.length;
+  const prompt = decade.prompts[curIdx];
+  const card = document.getElementById('prompt-card');
+
+  // Era stamp with inline icon
+  document.getElementById('stamp-icon-el').innerHTML = pieceSVG(decade.piece, decade.color, 28);
+  document.getElementById('stamp-text-el').textContent = `${decade.label} · ${decade.name}`;
+  document.getElementById('stamp-text-el').style.color = decade.accent;
+
+  document.getElementById('prompt-number').textContent = `Prompt ${curIdx + 1} of ${decade.prompts.length}`;
+  document.getElementById('prompt-text').textContent = prompt;
+
+  card.style.borderTopColor = decade.accent;
+
+  // Progress dots
+  const dotsEl = document.getElementById('prompt-dots');
+  dotsEl.innerHTML = '';
+  for (let i = 0; i < decade.prompts.length; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'prompt-dot';
+    const answered = (state.placedPieces[decade.id] || []).length;
+    if (i < answered) {
+      dot.style.background = decade.accent;
+    } else {
+      dot.style.background = 'rgba(200,168,112,0.35)';
+    }
+    dotsEl.appendChild(dot);
+  }
+
+  // Mic button styling
+  const micBtn = document.getElementById('mic-btn');
+  micBtn.style.borderColor = decade.accent;
+  micBtn.style.color = decade.accent;
+  micBtn.classList.remove('recording');
+  micBtn.style.display = '';
+  micBtn.style.background = 'transparent';
+  document.getElementById('mic-btn-label').textContent = 'narrate this memory';
+
+  // Reset
+  document.getElementById('waveform').style.display = 'none';
+  document.getElementById('post-record').style.display = 'none';
+  document.getElementById('rec-indicator').style.display = 'none';
+  document.getElementById('mic-status').textContent = '';
+  document.getElementById('mic-icon').style.display = '';
+  const trEl = document.getElementById('live-transcript');
+  trEl.classList.remove('visible');
+  trEl.innerHTML = '';
+  state.liveTranscriptFinal = '';
+  state.liveTranscriptInterim = '';
+
+  // Waveform bars
+  const wf = document.getElementById('waveform');
+  wf.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.backgroundColor = decade.accent + 'b3';
+    bar.style.height = '4px';
+    wf.appendChild(bar);
+  }
+
+  card.classList.add('visible');
+}
+
+function hidePromptCard() {
+  document.getElementById('prompt-card').classList.remove('visible');
+}
+
+function skipPrompt() {
+  if (!state.activeDecade) return;
+  const dec = state.activeDecade;
+  state.promptIndices[dec.id] = ((state.promptIndices[dec.id] || 0) + 1) % dec.prompts.length;
+  saveState();
+  showPromptCard(dec);
+}
+
+function nextPrompt() {
+  if (!state.activeDecade) return;
+  const dec = state.activeDecade;
+  state.promptIndices[dec.id] = ((state.promptIndices[dec.id] || 0) + 1) % dec.prompts.length;
+  saveState();
+  showPromptCard(dec);
+}
+
+// ===================== RECORDING =====================
+async function toggleRecording() {
+  initAudio();
+  if (!state.isRecording) {
+    await startRecording();
+  } else {
+    await stopRecording();
+  }
+}
+
+async function startRecording() {
+  state.isRecording = true;
+  state.recordingStartTime = Date.now();
+  state.audioChunks = [];
+  state.recordingPeaks = [];
+  state.liveTranscriptFinal = '';
+  state.liveTranscriptInterim = '';
+
+  const micBtn = document.getElementById('mic-btn');
+  micBtn.classList.add('recording');
+  micBtn.style.borderColor = state.activeDecade ? state.activeDecade.accent : '#c8a870';
+  micBtn.style.background = state.activeDecade ? state.activeDecade.accent : '#c8a870';
+  micBtn.style.color = '#fff';
+  document.getElementById('mic-btn-label').textContent = 'stop recording';
+  document.getElementById('mic-icon').style.display = '';
+  document.getElementById('rec-indicator').style.display = 'flex';
+  document.getElementById('waveform').style.display = 'flex';
+
+  playClickSound();
+
+  state.recTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - state.recordingStartTime) / 1000);
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    document.getElementById('rec-timer').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  }, 1000);
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.micStream = stream;
+
+    // Set up analyser for real waveform
+    const ctx = state.audioContext;
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.6;
+    source.connect(analyser);
+    state.micSource = source;
+    state.analyser = analyser;
+
+    // Pick a supported mime type (Safari prefers mp4, others webm)
+    const mime = pickSupportedMime();
+    state.mediaRecorder = mime
+      ? new MediaRecorder(stream, { mimeType: mime })
+      : new MediaRecorder(stream);
+    state.mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) state.audioChunks.push(e.data);
+    };
+    state.mediaRecorder.start();
+    state.micGranted = true;
+    document.getElementById('mic-status').textContent = '';
+
+    // Sample peaks every 200ms for archive mini-wave
+    state.peakSampleInterval = setInterval(() => samplePeak(), 200);
+
+    // Live transcript via Web Speech API (best-effort; silently no-op on Safari/Firefox)
+    startSpeechRecognition();
+  } catch(e) {
+    document.getElementById('mic-status').textContent = 'Mic blocked — simulated recording';
+    document.getElementById('mic-status').style.color = '#8a6a40';
+    state.micGranted = false;
+  }
+
+  animateWaveform();
+}
+
+function pickSupportedMime() {
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+  ];
+  for (const m of candidates) {
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) {
+      return m;
+    }
+  }
+  return '';
+}
+
+function samplePeak() {
+  if (!state.analyser) return;
+  const arr = new Uint8Array(state.analyser.frequencyBinCount);
+  state.analyser.getByteTimeDomainData(arr);
+  let max = 0;
+  for (let i = 0; i < arr.length; i++) {
+    const v = Math.abs(arr[i] - 128);
+    if (v > max) max = v;
+  }
+  state.recordingPeaks.push(max / 128);
+}
+
+function animateWaveform() {
+  if (!state.isRecording) return;
+  const bars = document.querySelectorAll('#waveform .bar');
+  if (state.analyser) {
+    const arr = new Uint8Array(state.analyser.frequencyBinCount);
+    state.analyser.getByteTimeDomainData(arr);
+    const slice = Math.floor(arr.length / bars.length);
+    bars.forEach((bar, i) => {
+      let max = 0;
+      for (let j = 0; j < slice; j++) {
+        const v = Math.abs(arr[i * slice + j] - 128);
+        if (v > max) max = v;
+      }
+      const h = 4 + (max / 128) * 28;
+      bar.style.height = h + 'px';
+    });
+  } else {
+    // Fallback: random bars when mic not granted
+    bars.forEach(bar => { bar.style.height = (4 + Math.random() * 20) + 'px'; });
+  }
+  requestAnimationFrame(animateWaveform);
+}
+
+// Build the recorded blob, returning null if no audio was captured
+function buildRecordingBlob() {
+  if (!state.audioChunks || state.audioChunks.length === 0) return null;
+  const type = state.audioChunks[0].type || 'audio/webm';
+  return new Blob(state.audioChunks, { type });
+}
+
+async function stopRecording() {
+  state.isRecording = false;
+  clearInterval(state.recTimerInterval);
+  clearInterval(state.peakSampleInterval);
+
+  // Stop speech recognition first so its `final` text settles
+  stopSpeechRecognition();
+
+  // Wait for the recorder to flush its last chunk
+  let blob = null;
+  if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
+    blob = await new Promise((resolve) => {
+      state.mediaRecorder.onstop = () => resolve(buildRecordingBlob());
+      state.mediaRecorder.stop();
+    });
+    state.mediaRecorder.stream.getTracks().forEach(t => t.stop());
+  }
+
+  // Tear down audio graph nodes
+  if (state.micSource) { try { state.micSource.disconnect(); } catch(e) {} }
+  state.micSource = null;
+  state.analyser = null;
+  state.micStream = null;
+
+  playChime();
+
+  const micBtn = document.getElementById('mic-btn');
+  micBtn.classList.remove('recording');
+  document.getElementById('rec-indicator').style.display = 'none';
+  document.getElementById('waveform').style.display = 'none';
+
+  const dur = Math.floor((Date.now() - state.recordingStartTime) / 1000);
+  const dec = state.activeDecade;
+  const idx = state.promptIndices[dec.id] || 0;
+  const prompt = dec.prompts[idx % dec.prompts.length];
+
+  // Downsample peaks to ~36 bars max for the archive mini-wave
+  const peaks = downsamplePeaks(state.recordingPeaks, 36);
+
+  const memId = uid();
+  const transcript = (state.liveTranscriptFinal || '').trim();
+
+  const memory = {
+    id: memId,
+    prompt: prompt,
+    duration: dur,
+    timestamp: new Date().toISOString(),
+    simulated: !state.micGranted,
+    decadeId: dec.id,
+    peaks: peaks,
+    transcript: transcript,
+    hasAudio: !!blob,
+  };
+
+  if (!state.placedPieces[dec.id]) state.placedPieces[dec.id] = [];
+  state.placedPieces[dec.id].push(memory);
+  state.totalMemories++;
+  saveState();
+
+  if (blob) {
+    try { await dbPut(memId, blob); }
+    catch(e) { memory.hasAudio = false; saveState(); }
+  }
+
+  // Update HUD badge
+  const badge = document.getElementById('hud-count-badge');
+  badge.textContent = state.totalMemories;
+
+  document.getElementById('post-record').style.display = 'block';
+  micBtn.style.display = 'none';
+  document.getElementById('mic-status').textContent = '';
+
+  // Mark used
+  const slot = document.getElementById('slot-' + dec.id);
+  slot.classList.remove('available');
+  slot.classList.add('used');
+}
+
+function downsamplePeaks(peaks, target) {
+  if (!peaks || peaks.length === 0) return [];
+  if (peaks.length <= target) return peaks.slice();
+  const out = [];
+  const bucket = peaks.length / target;
+  for (let i = 0; i < target; i++) {
+    let max = 0;
+    const start = Math.floor(i * bucket);
+    const end = Math.floor((i + 1) * bucket);
+    for (let j = start; j < end; j++) {
+      if (peaks[j] > max) max = peaks[j];
+    }
+    out.push(Number(max.toFixed(3)));
+  }
+  return out;
+}
+
+// ===================== SPEECH RECOGNITION (live transcript) =====================
+function startSpeechRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const transcriptEl = document.getElementById('live-transcript');
+  if (!SR) {
+    // Browser doesn't support it (Safari/Firefox). Show a polite placeholder.
+    transcriptEl.classList.add('visible');
+    transcriptEl.innerHTML = '<span class="placeholder">LIVE TRANSCRIPT NOT SUPPORTED IN THIS BROWSER</span>';
+    return;
+  }
+  const rec = new SR();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = navigator.language || 'en-US';
+
+  rec.onresult = (ev) => {
+    let interim = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const res = ev.results[i];
+      if (res.isFinal) {
+        state.liveTranscriptFinal += (state.liveTranscriptFinal ? ' ' : '') + res[0].transcript.trim();
+      } else {
+        interim += res[0].transcript;
+      }
+    }
+    state.liveTranscriptInterim = interim;
+    renderLiveTranscript();
+  };
+
+  rec.onerror = (e) => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      transcriptEl.innerHTML = '<span class="placeholder">TRANSCRIPT PERMISSION DENIED</span>';
+    }
+  };
+
+  rec.onend = () => {
+    // Auto-restart while still recording (some browsers stop after silence)
+    if (state.isRecording && state.speechRecognition === rec) {
+      try { rec.start(); } catch(e) {}
+    }
+  };
+
+  try { rec.start(); state.speechRecognition = rec; } catch(e) {}
+  transcriptEl.classList.add('visible');
+  transcriptEl.innerHTML = '<span class="placeholder">LISTENING…</span>';
+}
+
+function renderLiveTranscript() {
+  const el = document.getElementById('live-transcript');
+  if (!el) return;
+  const finalText = state.liveTranscriptFinal || '';
+  const interim = state.liveTranscriptInterim || '';
+  if (!finalText && !interim) {
+    el.innerHTML = '<span class="placeholder">LISTENING…</span>';
+    return;
+  }
+  el.innerHTML = escapeHtml(finalText)
+    + (interim ? ' <span class="interim">' + escapeHtml(interim) + '</span>' : '');
+  el.scrollTop = el.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+function stopSpeechRecognition() {
+  if (state.speechRecognition) {
+    const rec = state.speechRecognition;
+    state.speechRecognition = null;
+    try { rec.onend = null; rec.stop(); } catch(e) {}
+  }
+}
+
+// ===================== RETURN PIECE =====================
+function returnPiece() {
+  if (!state.activeDecade) return;
+  const dec = state.activeDecade;
+  const slot = document.getElementById('slot-' + dec.id);
+
+  hidePromptCard();
+
+  const placed = document.getElementById('placed-piece-display');
+  placed.style.opacity = '0';
+
+  const surface = document.getElementById('board-surface');
+  surface.style.background = `radial-gradient(ellipse 70% 60% at 50% 50%,
+    #1a1510 0%, #130f0c 50%, #0a0806 100%)`;
+
+  document.getElementById('era-overlay').style.opacity = '0';
+  const glow = document.getElementById('era-glow');
+  glow.style.opacity = '0';
+  glow.classList.remove('active');
+  clearMatrixRain();
+  document.getElementById('era-stamp').style.opacity = '0';
+
+  const dz = document.getElementById('drop-zone');
+  dz.style.opacity = '';
+  document.getElementById('drop-zone-ring1').style.borderColor = '';
+  document.getElementById('drop-zone-ring2').style.borderColor = '';
+
+  // Reset HUD
+  document.getElementById('hud-era-wrap').classList.remove('era-on');
+  document.getElementById('hud-count-badge').style.background = '';
+  document.getElementById('hud-count-badge').style.color = '';
+
+  updateCursor('#c8a870');
+  document.documentElement.style.setProperty('--era-accent', '#c8a870');
+  document.documentElement.style.setProperty('--era-accent-rgb', '200,168,112');
+
+  // Piece returns to tray. Keep `used` if memories exist so the saved badge persists.
+  slot.classList.remove('active');
+  const hasMemories = (state.placedPieces[dec.id] || []).length > 0;
+  if (hasMemories) {
+    slot.classList.add('used');
+    slot.classList.remove('available');
+  } else {
+    slot.classList.remove('used');
+    slot.classList.add('available');
+  }
+  slot.style.boxShadow = `0 4px 20px ${dec.color}14`;
+
+  document.getElementById('mic-btn').style.display = '';
+
+  state.promptIndices[dec.id] = ((state.promptIndices[dec.id] || 0) + 1) % dec.prompts.length;
+  saveState();
+  state.activeDecade = null;
+}
+
+// ===================== TIMELINE =====================
+function openTimeline() {
+  initAudio();
+  playWhoosh();
+  state.currentView = 'timeline';
+  document.getElementById('timeline-panel').classList.add('open');
+  renderTimeline();
+}
+
+function closeTimeline() {
+  state.currentView = 'board';
+  document.getElementById('timeline-panel').classList.remove('open');
+  // Stop any playing entry so audio doesn't keep going behind the board
+  if (state.currentlyPlaying && state.currentlyPlaying.audioEl) {
+    state.currentlyPlaying.audioEl.pause();
+    state.currentlyPlaying.audioEl.currentTime = 0;
+    if (state.currentlyPlaying.btn) state.currentlyPlaying.btn.textContent = '▶ Play';
+    if (state.currentlyPlaying.url) URL.revokeObjectURL(state.currentlyPlaying.url);
+    state.currentlyPlaying = null;
+  }
+}
+
+function renderTimeline() {
+  const container = document.getElementById('timeline-entries');
+  container.innerHTML = '';
+
+  const allMemories = [];
+  DECADES.forEach(dec => {
+    (state.placedPieces[dec.id] || []).forEach(m => allMemories.push({ ...m, decade: dec }));
+  });
+
+  if (allMemories.length === 0) {
+    // Rich empty state
+    container.innerHTML = `
+      <div id="timeline-empty">
+        <div id="empty-logo">
+          <span style="color:#4a3a2a;font-size:12px">◆</span>
+          <span style="font-family:var(--font-serif);font-size:18px;color:#c8a870">CHRONO</span>
+          <span style="font-family:var(--font-mono);color:#4a3a2a">·</span>
+          <span style="font-family:var(--font-serif);font-style:italic;font-size:18px;color:#c8a870">RECALL</span>
+        </div>
+        <svg id="empty-pieces" width="360" height="80" viewBox="0 0 360 80" xmlns="http://www.w3.org/2000/svg">
+          ${DECADES.map((dec, i) => {
+            const angle = -20 + (i * 40/7);
+            const x = 28 + i * 44;
+            const y = 40 + Math.sin((i - 3.5) * 0.45) * 14;
+            return `<g transform="translate(${x},${y}) rotate(${angle}) scale(0.55)">${pieceSVG(dec.piece, dec.color, 52)}</g>`;
+          }).join('')}
+        </svg>
+        <div id="empty-text">Your family's story begins<br>with the first token placed.</div>
+      </div>`;
+    // Hide spine when empty
+    document.getElementById('timeline-spine').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('timeline-spine').style.display = '';
+
+  allMemories.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  // Update spine gradient with first/last entry colors
+  if (allMemories.length >= 2) {
+    document.getElementById('timeline-spine').style.background =
+      `linear-gradient(to bottom, ${allMemories[0].decade.accent}, ${allMemories[allMemories.length-1].decade.accent})`;
+    document.getElementById('timeline-spine').style.opacity = '0.3';
+  } else {
+    document.getElementById('timeline-spine').style.background = allMemories[0].decade.accent;
+    document.getElementById('timeline-spine').style.opacity = '0.3';
+  }
+
+  allMemories.forEach(mem => {
+    const dec = mem.decade;
+    const dur = mem.duration || 0;
+    const durStr = `${Math.floor(dur / 60)}:${(dur % 60).toString().padStart(2, '0')}s recorded`;
+    const date = new Date(mem.timestamp);
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+    // Mini-waveform: prefer real captured peaks, fall back to a deterministic shape
+    let waveBars = '';
+    const peaks = mem.peaks && mem.peaks.length ? mem.peaks : null;
+    const barCount = peaks ? peaks.length : 18;
+    for (let i = 0; i < barCount; i++) {
+      const v = peaks ? peaks[i] : (0.3 + Math.abs(Math.sin(i * 1.3 + (mem.id || '').length)) * 0.7);
+      const h = Math.max(2, v * 14);
+      waveBars += `<span style="height:${h}px;background:${dec.accent}b3"></span>`;
+    }
+
+    const playable = mem.hasAudio !== false && mem.id;
+    const hasTranscript = mem.transcript && mem.transcript.length > 0;
+
+    const entry = document.createElement('div');
+    entry.className = 'timeline-entry';
+    entry.dataset.memId = mem.id || '';
+    entry.style.setProperty('--entry-accent', dec.accent);
+    entry.innerHTML = `
+      <div class="spine-dot" style="background:${dec.accent}"></div>
+      <div class="era-year">${dec.label}</div>
+      <div class="entry-icon">${pieceSVG(dec.piece, dec.color, 36)}</div>
+      <div class="entry-content">
+        <div class="entry-prompt">"${escapeHtml(mem.prompt)}"</div>
+        <div class="entry-meta">
+          <span>${durStr} · ${dateStr} at ${timeStr}</span>
+          <div class="mini-wave">${waveBars}</div>
+          <button class="play-btn" style="color:${dec.accent};border-color:${dec.accent}80"
+            ${playable ? '' : 'disabled style="opacity:0.4;cursor:not-allowed;color:' + dec.accent + ';border-color:' + dec.accent + '40"'}
+            onclick="togglePlay(this, '${mem.id || ''}')">▶ Play</button>
+          ${hasTranscript ? `<button class="toggle-transcript-btn" onclick="toggleTranscript(this)">📝 Transcript</button>` : ''}
+          <button class="delete-btn" onclick="deleteMemory('${mem.id || ''}', '${dec.id}')">✕ Delete</button>
+          ${mem.simulated ? `<span style="color:${dec.accent}80;font-size:9px">simulated</span>` : ''}
+          ${!playable ? `<span style="color:#8a6a40;font-size:9px">no audio</span>` : ''}
+        </div>
+        <audio class="entry-audio" preload="none"></audio>
+        ${hasTranscript ? `<div class="entry-transcript">${escapeHtml(mem.transcript)}</div>` : ''}
+      </div>
+    `;
+    container.appendChild(entry);
+  });
+}
+
+// Stop any other entry's audio, then play this one (or pause if already playing it)
+async function togglePlay(btn, memId) {
+  if (!memId) return;
+  const entry = btn.closest('.timeline-entry');
+  const audioEl = entry.querySelector('.entry-audio');
+
+  // If already playing this entry, pause
+  if (state.currentlyPlaying && state.currentlyPlaying.audioEl === audioEl && !audioEl.paused) {
+    audioEl.pause();
+    return;
+  }
+
+  // Stop any other currently playing entry
+  if (state.currentlyPlaying && state.currentlyPlaying.audioEl !== audioEl) {
+    state.currentlyPlaying.audioEl.pause();
+    state.currentlyPlaying.audioEl.currentTime = 0;
+    if (state.currentlyPlaying.btn) state.currentlyPlaying.btn.textContent = '▶ Play';
+    if (state.currentlyPlaying.url) URL.revokeObjectURL(state.currentlyPlaying.url);
+    state.currentlyPlaying.audioEl.classList.remove('visible');
+  }
+
+  // Lazy-load blob from IndexedDB on first play
+  if (!audioEl.src) {
+    try {
+      const blob = await dbGet(memId);
+      if (!blob) {
+        btn.textContent = 'no audio';
+        btn.disabled = true;
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      audioEl.src = url;
+      audioEl.dataset.objectUrl = url;
+    } catch(e) {
+      btn.textContent = 'error';
+      return;
+    }
+  }
+
+  audioEl.classList.add('visible');
+  audioEl.controls = true;
+  try {
+    await audioEl.play();
+    btn.textContent = '⏸ Pause';
+    state.currentlyPlaying = {
+      audioEl,
+      btn,
+      url: audioEl.dataset.objectUrl,
+    };
+    audioEl.onended = () => {
+      btn.textContent = '▶ Play';
+      if (state.currentlyPlaying && state.currentlyPlaying.audioEl === audioEl) {
+        state.currentlyPlaying = null;
+      }
+    };
+    audioEl.onpause = () => {
+      if (!audioEl.ended) btn.textContent = '▶ Play';
+    };
+  } catch(e) {
+    btn.textContent = '▶ Play';
+  }
+}
+
+function toggleTranscript(btn) {
+  const entry = btn.closest('.timeline-entry');
+  entry.classList.toggle('expanded');
+  btn.textContent = entry.classList.contains('expanded') ? '📝 Hide' : '📝 Transcript';
+}
+
+async function deleteMemory(memId, decadeId) {
+  if (!memId || !decadeId) return;
+  if (!confirm('Delete this memory? This cannot be undone.')) return;
+
+  // Stop playback if this is the playing entry
+  if (state.currentlyPlaying && state.currentlyPlaying.audioEl) {
+    state.currentlyPlaying.audioEl.pause();
+    if (state.currentlyPlaying.url) URL.revokeObjectURL(state.currentlyPlaying.url);
+    state.currentlyPlaying = null;
+  }
+
+  // Remove from state
+  const list = state.placedPieces[decadeId] || [];
+  const idx = list.findIndex(m => m.id === memId);
+  if (idx >= 0) {
+    list.splice(idx, 1);
+    state.totalMemories = Math.max(0, state.totalMemories - 1);
+    if (list.length === 0) delete state.placedPieces[decadeId];
+    saveState();
+  }
+
+  // Drop blob from IndexedDB (best-effort)
+  try { await dbDelete(memId); } catch(e) {}
+
+  // Update HUD + tray slot used state
+  document.getElementById('hud-count-badge').textContent = state.totalMemories;
+  const slot = document.getElementById('slot-' + decadeId);
+  if (slot && !(state.placedPieces[decadeId] || []).length) {
+    slot.classList.remove('used');
+    slot.classList.add('available');
+  }
+
+  renderTimeline();
+}
+
+// ===================== INIT =====================
+function init() {
+  loadState();
+  buildTray();
+
+  // Wait for fonts then create dust motes
+  document.fonts.ready.then(() => {
+    createDustMotes();
+  });
+
+  // Update badge
+  document.getElementById('hud-count-badge').textContent = state.totalMemories;
+
+  // First interaction inits audio
+  document.addEventListener('click', () => initAudio(), { once: true });
+}
+
+init();
+</script>
+</body>
+</html>
